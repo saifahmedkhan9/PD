@@ -1,0 +1,590 @@
+CUDA
+
+Q1WAP IN CUDA TO ADD TWO NUMBERS.
+#include<stdio.h>
+#include<stdlib.h>
+#include<cuda.h>
+__global__ void add(int *x,int *y,int *z)
+{
+	*z = *x + *y;
+}
+int main()
+{
+	int a,b,c;
+	int *d_a,*d_b,*d_c;
+	
+	cudaMalloc((void **)&d_a,sizeof(int));
+	cudaMalloc((void **)&d_b,sizeof(int));
+	cudaMalloc((void **)&d_c,sizeof(int));
+	printf("enter first number\n");
+	scanf("%d",&a);
+	printf("enter second number\n");
+	scanf("%d",&b);
+	cudaMemcpy(d_a,&a,sizeof(int),cudaMemcpyHostToDevice);
+	cudaMemcpy(d_b,&b,sizeof(int),cudaMemcpyHostToDevice);
+	add<<<1,1>>>(d_a,d_b,d_c);
+	cudaMemcpy(&c,d_c,sizeof(int),cudaMemcpyDeviceToHost);
+	
+	printf("result is %d\n",c);
+	cudaFree(d_a);
+	cudaFree(d_b);
+	cudaFree(d_c);
+	
+	return(0);
+}
+
+
+Q2.WAP IN CUDA TO PRINT THE HELLO WORLD.
+
+#include<stdio.h>
+#include<cuda.h>
+__global__ void myker(void)
+{
+	
+}
+
+int main()
+{
+	myker<<<1,1>>>();
+	printf("Hello");
+	return 0;
+}
+
+
+
+
+
+
+
+Q3.WAP IN CUDA TO FIND VECTOR SUM.
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+ 
+// CUDA kernel. Each thread takes care of one element of c
+__global__ void vecAdd(float *a, float *b, float *c, int n)
+{
+    // Get our global thread ID
+    int id = blockIdx.x*blockDim.x+threadIdx.x;
+ 
+    // Make sure we do not go out of bounds
+    if (id < n)
+        c[id] = a[id] + b[id];
+}
+ 
+int main( int argc, char* argv[] )
+{
+    // Size of vectors
+    int n = 100000;
+ 
+    // Host input vectors
+    float *h_a;
+    float *h_b;
+    //Host output vector
+    float *h_c;
+ 
+    // Device input vectors
+    float *d_a;
+    float *d_b;
+    //Device output vector
+    float *d_c;
+ 
+    // Size, in bytes, of each vector
+    size_t bytes = n*sizeof(float);
+ 
+    // Allocate memory for each vector on host
+    h_a = (float*)malloc(bytes);
+    h_b = (float*)malloc(bytes);
+    h_c = (float*)malloc(bytes);
+ 
+    // Allocate memory for each vector on GPU
+    cudaMalloc(&d_a, bytes);
+    cudaMalloc(&d_b, bytes);
+    cudaMalloc(&d_c, bytes);
+ 
+    int i;
+    // Initialize vectors on host
+    for( i = 0; i < n; i++ ) {
+        h_a[i] = sin(i)*sin(i);
+        h_b[i] = cos(i)*cos(i);
+    }
+ 
+    // Copy host vectors to device
+    cudaMemcpy( d_a, h_a, bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_b, h_b, bytes, cudaMemcpyHostToDevice);
+ 
+    int blockSize, gridSize;
+ 
+    // Number of threads in each thread block
+    blockSize = 1024;
+ 
+    // Number of thread blocks in grid
+    gridSize = (int)ceil((float)n/blockSize);
+ 
+    // Execute the kernel
+    vecAdd<<<gridSize, blockSize>>>(d_a, d_b, d_c, n);
+ 
+    // Copy array back to host
+    cudaMemcpy( h_c, d_c, bytes, cudaMemcpyDeviceToHost );
+ 
+    // Sum up vector c and print result divided by n, this should equal 1 within error
+    float sum = 0;
+    for(i=0; i<n; i++)
+        sum += h_c[i];
+    printf("final result: %f\n", sum/n);
+ 
+    // Release device memory
+    cudaFree(d_a);
+    cudaFree(d_b);
+    cudaFree(d_c);
+ 
+    // Release host memory
+    free(h_a);
+    free(h_b);
+    free(h_c);
+ 
+    return 0;
+}
+
+
+
+
+
+Q4.WAP IN CUDA TO PRINT THE RESULTANT SUM OF ARRAY. 
+ANS:
+#include <stdio.h>
+#include <cuda.h>
+#include <stdlib.h>
+
+__global__ void myAdder(int * array, int *sum,int N)
+
+{
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	if (idx < N)
+		*sum	=	*sum + array[idx];
+}
+
+int main()
+{
+	int i,*sum_h,*sum_d,*array_h,*array_d,N,size,n_block,block_size;
+	i=0;
+	sum_h=&i;
+	printf("Enter size of array\n");
+	scanf("%d",&N);
+	size = sizeof(int)*N;
+
+	// allocating memory in host
+	array_h = (int *)malloc(size);
+
+	// allocating memory in device
+	cudaMalloc((void **)&array_d, size);
+	cudaMalloc((void **)&sum_d, sizeof(int));
+	for(i=0;i<N;i++)
+	{
+		printf("enter element %d::",i+1);
+		scanf("%d",&array_h[i]);
+	}
+	// copy data from  host memory to device memory 
+	cudaMemcpy(array_d,array_h,size,cudaMemcpyHostToDevice);
+	cudaMemcpy(sum_d,sum_h,sizeof(int),cudaMemcpyHostToDevice);
+
+	// Number of thread per block
+	printf("Enter block size (Number of thread per block):: ");
+	scanf("%d",&block_size);
+
+	// number of block
+	n_block = N/block_size + (N%block_size == 0 ? 0:1);
+
+	// Calling  device function
+	myAdder<<< n_block,block_size >>>(array_d,sum_d,N-1);
+
+	// copy data from device memory to host memory
+	cudaMemcpy(sum_h,sum_d,sizeof(int),cudaMemcpyDeviceToHost);
+
+	printf("Final Answer is %d\n",*sum_h);
+	return 0;
+}
+
+
+
+
+Q5.WAP USING CUDA TO REVERSE THE ARRAY CONTENT BLOCKWISE
+// includes, system
+#include <stdio.h>
+#include <assert.h>
+
+// Simple utility function to check for CUDA runtime errors
+void checkCUDAError(const char* msg);
+
+// Part 1 of 1: implement the kernel
+__global__ void reverseArrayBlock(int *d_b, int *d_a  )
+{
+int bx= blockIdx.x ;
+int tx = threadIdx.x ;
+int i =  blockDim.x - 1 - (blockDim.x * bx + tx ) ;
+d_b[blockDim.x * bx + tx ] = d_a[i] ;
+
+
+
+}
+
+int main( int argc, char** argv)
+{
+    // pointer for host memory and size
+    int *h_a;
+    int dimA = 256;
+
+    // pointer for device memory
+    int *d_b, *d_a;
+
+    // define grid and block size
+    int numBlocks = 1;
+    int numThreadsPerBlock = dimA;
+
+    // allocate host and device memory
+    size_t memSize = numBlocks * numThreadsPerBlock * sizeof(int);
+    h_a = (int *) malloc(memSize);
+    cudaMalloc( (void **) &d_a, memSize );
+    cudaMalloc( (void **) &d_b, memSize );
+
+    // Initialize input array on host
+    for (int i = 0; i < dimA; ++i)
+    {
+        h_a[i] = i;
+    }
+
+    // Copy host array to device array
+    cudaMemcpy( d_a, h_a, memSize, cudaMemcpyHostToDevice );
+
+    // launch kernel
+    dim3 dimGrid(numBlocks);
+    dim3 dimBlock(numThreadsPerBlock);
+    reverseArrayBlock<<< dimGrid, dimBlock >>>( d_b, d_a );
+
+    // block until the device has completed
+    cudaThreadSynchronize();
+
+    // check if kernel execution generated an error
+    // Check for any CUDA errors
+    checkCUDAError("kernel invocation");
+
+    // device to host copy
+    cudaMemcpy( h_a, d_b, memSize, cudaMemcpyDeviceToHost );
+
+    // Check for any CUDA errors
+    checkCUDAError("memcpy");
+
+    // verify the data returned to the host is correct
+    for (int i = 0; i < dimA; i++)
+    {
+        assert(h_a[i] == dimA - 1 - i );
+    }
+
+    // free device memory
+    cudaFree(d_a);
+    cudaFree(d_b);
+
+    // free host memory
+    free(h_a);
+
+    // If the program makes it this far, then the results are correct and
+    // there are no run-time errors.  Good work!
+    printf("Correct!\n");
+
+    return 0;
+}
+
+void checkCUDAError(const char *msg)
+{
+    cudaError_t err = cudaGetLastError();
+    if( cudaSuccess != err)
+    {
+        fprintf(stderr, "Cuda error: %s: %s.\n", msg, cudaGetErrorString( err) );
+        exit(EXIT_FAILURE);
+    }
+}
+
+Q6. WAP IN CUDA TO FIND FIND ADDITION OF TWO ARRAY AND STORE ITS RESULT TO THIRD ARRAY.
+ #include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+
+#include <stdio.h>
+
+cudaError_t addWithCuda(int *c, const int *a, const int *b, size_t size);
+
+__global__ void addKernel(int *c, const int *a, const int *b)
+{
+    int i = threadIdx.x;
+    c[i] = a[i] + b[i];
+}
+
+int main()
+{
+    const int arraySize = 5;
+    const int a[arraySize] = { 1, 2, 3, 4, 5 };
+    const int b[arraySize] = { 10, 20, 30, 40, 50 };
+    int c[arraySize] = { 0 };
+
+    // Add vectors in parallel.
+    cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "addWithCuda failed!");
+        return 1;
+    }
+
+    printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
+        c[0], c[1], c[2], c[3], c[4]);
+
+   // cudaThreadExit must be called before exiting in order for profiling and
+ // tracing tools such as Nsight and Visual Profiler to show complete traces.
+    cudaStatus = cudaThreadExit();
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaThreadExit failed!");
+        return 1;
+    }
+
+    return 0;
+}
+
+
+
+ 
+
+Q7.WAP USING CUDA TO FIND MATRIX MULTIPLICATION USING SHARED AND NON SHARED KERNEL.
+
+#include <stdio.h>
+
+#include <math.h>
+
+#define TILE_WIDTH 2
+
+/*matrix multiplication kernels*/
+
+//non shared
+__global__ void
+MatrixMul( float *Md , float *Nd , float *Pd , const int WIDTH )
+{
+
+           // calculate thread id
+
+           unsigned int col = TILE_WIDTH*blockIdx.x + threadIdx.x ;
+
+           unsigned int row = TILE_WIDTH*blockIdx.y + threadIdx.y ;
+
+         for (int k = 0 ; k<WIDTH ; k++ )
+         {
+                  Pd[row*WIDTH + col]+= Md[row * WIDTH + k ] * Nd[ k * WIDTH + col] ;
+          }
+}
+
+// shared
+__global__ void
+MatrixMulSh( float *Md , float *Nd , float *Pd , const int WIDTH )
+{
+
+        //Taking shared array to break the MAtrix in Tile widht and fatch them in that array per ele
+
+          __shared__ float Mds [TILE_WIDTH][TILE_WIDTH] ;
+
+           __shared__ float Nds [TILE_WIDTH][TILE_WIDTH] ;
+
+         // calculate thread id
+          unsigned int col = TILE_WIDTH*blockIdx.x + threadIdx.x ;
+          unsigned int row = TILE_WIDTH*blockIdx.y + threadIdx.y ;
+
+        for (int m = 0 ; m<WIDTH/TILE_WIDTH ; m++ ) // m indicate number of phase
+       {
+            Mds[threadIdx.y][threadIdx.x] =  Md[row*WIDTH + (m*TILE_WIDTH + threadIdx.x)]  ;
+            Nds[threadIdx.y][threadIdx.x] =  Nd[ ( m*TILE_WIDTH + threadIdx.y) * WIDTH + col] ;
+         __syncthreads() ; // for syncronizeing the threads
+
+         // Do for tile
+           for ( int k = 0; k<TILE_WIDTH ; k++ )
+                       Pd[row*WIDTH + col]+= Mds[threadIdx.x][k] * Nds[k][threadIdx.y] ;
+         __syncthreads() ; // for syncronizeing the threads
+
+     }
+}
+
+// main routine
+int main ()
+{
+   const int WIDTH = 6 ;
+   float array1_h[WIDTH][WIDTH] ,array2_h[WIDTH][WIDTH], result_array_h[WIDTH][WIDTH] ,M_result_array_h[WIDTH][WIDTH]  ;
+  float *array1_d , *array2_d ,*result_array_d  ,*M_result_array_d ; // device array
+  int i , j ;
+  //input in host array
+  for ( i = 0 ; i<WIDTH ; i++ )
+  {
+     for (j = 0 ; j<WIDTH ; j++ )
+     {
+        array1_h[i][j] = 1 ;
+        array2_h[i][j] = 2 ;
+     }
+  }
+
+  //create device array cudaMalloc ( (void **)&array_name, sizeofmatrixinbytes) ;
+
+  cudaMalloc((void **) &array1_d , WIDTH*WIDTH*sizeof (int) ) ;
+
+  cudaMalloc((void **) &array2_d , WIDTH*WIDTH*sizeof (int) ) ;
+
+ 
+
+  //copy host array to device array; cudaMemcpy ( dest , source , WIDTH , direction )
+
+  cudaMemcpy ( array1_d , array1_h , WIDTH*WIDTH*sizeof (int) , cudaMemcpyHostToDevice ) ;
+
+  cudaMemcpy ( array2_d , array2_h , WIDTH*WIDTH*sizeof (int) , cudaMemcpyHostToDevice ) ;
+  //allocating memory for resultent device array
+
+  cudaMalloc((void **) &result_array_d , WIDTH*WIDTH*sizeof (int) ) ;
+
+  cudaMalloc((void **) &M_result_array_d , WIDTH*WIDTH*sizeof (int) ) ;
+
+ 
+
+  //calling kernal
+
+  dim3 dimGrid ( WIDTH/TILE_WIDTH , WIDTH/TILE_WIDTH ,1 ) ;
+
+  dim3 dimBlock( TILE_WIDTH, TILE_WIDTH, 1 ) ;
+
+// Change if 0 to if 1 for running non shared code and make if 0 for shared memory code
+#if 0
+
+                MatrixMul <<<dimGrid,dimBlock>>> ( array1_d , array2_d ,M_result_array_d , WIDTH) ;
+
+#endif
+ 
+#if 1
+
+               MatrixMulSh<<<dimGrid,dimBlock>>> ( array1_d , array2_d ,M_result_array_d , WIDTH) ;
+
+#endif
+
+  // all gpu function blocked till kernel is working
+  //copy back result_array_d to result_array_h
+
+  cudaMemcpy(M_result_array_h , M_result_array_d , WIDTH*WIDTH*sizeof(int) ,
+                                    cudaMemcpyDeviceToHost) ;
+
+  //printf the result array
+  for ( i = 0 ; i<WIDTH ; i++ )
+  {
+      for ( j = 0 ; j < WIDTH ; j++ )
+     {
+        printf ("%f   ",M_result_array_h[i][j] ) ;
+     }
+ printf ("\n") ;
+}
+ system("pause") ;
+}
+Q8.WAP A HELPER FUNCTION FOR USING CUDA TO ADD VECTORS IN PARALLEL.
+cudaError_t addWithCuda(int *c, const int *a, const int *b, size_t size)
+{
+    int *dev_a = 0;
+    int *dev_b = 0;
+    int *dev_c = 0;
+    cudaError_t cudaStatus;
+
+    // Choose which GPU to run on, change this on a multi-GPU system.
+    cudaStatus = cudaSetDevice(0);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
+        goto Error;
+    }
+
+    // Allocate GPU buffers for three vectors (two input, one output)    .
+    cudaStatus = cudaMalloc((void**)&dev_c, size * sizeof(int));
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed!");
+        goto Error;
+    }
+
+    cudaStatus = cudaMalloc((void**)&dev_a, size * sizeof(int));
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed!");
+        goto Error;
+    }
+
+    cudaStatus = cudaMalloc((void**)&dev_b, size * sizeof(int));
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed!");
+        goto Error;
+    }
+
+    // Copy input vectors from host memory to GPU buffers.
+    cudaStatus = cudaMemcpy(dev_a, a, size * sizeof(int), cudaMemcpyHostToDevice);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+        goto Error;
+    }
+
+    cudaStatus = cudaMemcpy(dev_b, b, size * sizeof(int), cudaMemcpyHostToDevice);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+        goto Error;
+    }
+
+    // Launch a kernel on the GPU with one thread for each element.
+    addKernel<<<1, size>>>(dev_c, dev_a, dev_b);
+
+    // cudaThreadSynchronize waits for the kernel to finish, and returns
+    // any errors encountered during the launch.
+    cudaStatus = cudaThreadSynchronize();
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaThreadSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
+        goto Error;
+    }
+
+    // Copy output vector from GPU buffer to host memory.
+    cudaStatus = cudaMemcpy(c, dev_c, size * sizeof(int), cudaMemcpyDeviceToHost);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+        goto Error;
+    }
+
+Error:
+    cudaFree(dev_c);
+    cudaFree(dev_a);
+    cudaFree(dev_b);
+   
+    return cudaStatus;
+}
+
+
+
+Q10.WAP TO FIND THE SUM OF SERIES AND DISPLAY IS RESULT.
+
+#define N 10
+ #include<stdio.h>
+void add ( int *a, int *b, int *c )
+{
+              int tid = 0; // this is CPU zero, so we start at zero
+            
+              while  (tid < N)
+              {
+                      c[tid] = a[tid] + b[tid];
+                       tid += 1;  // we have one CPU, so we increment by one
+               }
+}
+
+int main( void )
+{
+             int a[N], b[N], c[N];
+         
+           // fill the arrays 'a' and 'b' on the CPU
+           for (int i=0; i<N; i++)
+           {
+                      a [i] = -i;
+                      b[i] = i * i;
+            }
+         add( a, b, c );
+
+       // display the results
+           for (int i=0; i<N; i++)
+         {
+                printf( "%d + %d = %d\n", a[i], b[i], c[i] );
+          }
+  return 0;}

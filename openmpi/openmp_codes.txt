@@ -1,0 +1,301 @@
+OPENMP
+
+Q1.WAP USING OPENMPI TO PRINT HELLO WORLD.
+ANS:
+#include<omp.h>
+#include<stdio.h>
+int main(){
+	#pragma omp parallel
+	{
+		int ID=omp_get_thread_num();
+		printf("Hello by %d\n",ID);
+		printf("World by %d\n",ID);
+	}
+	return 0;
+}
+Q2.WAP USING OPENMPI TO PRINT FIBONACCI SERIES.
+#include<omp.h>
+#include<stdio.h>
+
+int fibonacci(int x){
+	int f[2],i;			
+	if(x==1){
+		return 0;	
+	}
+	else if(x==2){
+		return 1;
+	}
+	else {
+		#pragma omp parallel for
+		for(i=1;i<=2;i++){
+			f[i-1]=fibonacci(x-i);		
+			printf("Thread %d calculates term %d\n",omp_get_thread_num(),x-i);		
+		}
+		return f[0]+f[1];		
+	}
+}
+
+int main(){
+	int x;
+	omp_set_num_threads(2);
+	omp_set_nested(1);
+	printf("Enter which term to be found out : ");
+	scanf("%d",&x);
+  	printf("%dth term is : %d\n",x,fibonacci(x));
+	return 0;
+}
+Q3.WAP USING OPENMPI TO FIND VALUE OF PIE.
+#include<stdio.h>
+#include<omp.h>
+#include<stdlib.h>
+
+int main(){
+	int n=1024;
+	int i=0;
+	float x;
+	omp_set_num_threads(10);
+	float* pi=(float*)malloc(sizeof(float)*n); 
+	float PI=0.0f;
+	#pragma omp parallel for
+	for(i=0;i<n;i++){	
+		x=(i+0.5)/n;
+		//printf("Thread %d is working\n",omp_get_thread_num());
+		//printf("PI is %f,adding %f\n",pi,x);
+		pi[i]=((4/(1+x*x))/n);
+	}
+	int ctr=n,k=1;
+	while(ctr!=1){
+		#pragma omp parallel for
+		for(i=0;i<ctr/2;i++){
+			pi[2*k*i]+=pi[2*k*i+k];
+		}
+		ctr/=2;
+		k*=2;
+	}
+	printf("PI is %f\n",pi[0]); 
+	return 0;
+}
+Q4.WAP USING OPENMPI TO FIND SUM OF ARRAY.
+#include<stdio.h>
+#include<omp.h>
+int main(){
+	int i,n=5;
+	int a[5]={1,2,3,4,5},b[5]={1,1,1,2,1},c[5];
+	#pragma omp parallel for
+	for(i=0;i<n;i++){
+		c[i]=a[i]+b[i];
+		printf("c[%d]=%d calculated by the thread %d\n",i,c[i],omp_get_thread_num());
+	}
+}
+Q5.WAP USING OPENMPI TO CALCULATE THE PRODUCT OF AN ARRAY.
+#include<omp.h>
+#include<stdio.h>
+int main(){
+	int A[10][10],B[10][10],C[10][10];
+	int n,i,j,k;
+	printf("Enter the value of N :");
+	scanf("%d",&n);
+	omp_set_num_threads(n*n*n);
+
+	printf("Enter A:\n");
+	for(i=0;i<n;i++){
+		for(j=0;j<n;j++){
+			scanf("%d",&A[i][j]);
+		}
+	}
+
+	printf("Enter B:\n");
+	for(i=0;i<n;i++){
+		for(j=0;j<n;j++){
+			scanf("%d",&B[i][j]);
+		}
+	}
+
+	#pragma omp parallel for
+	for(i=0;i<n;i++)
+	{
+		#pragma omp parallel for
+		for(j=0;j<n;j++)
+		{
+			int x=0;
+			#pragma omp parallel for reduction(+:x)
+			for(k=0;k<n;k++)
+			{
+				x+=A[i][k]*B[k][j];
+			}
+			C[i][j]=x;
+		}
+	}
+
+	printf("Matrix C:\n");
+	for(i=0;i<n;i++){
+		for(j=0;j<n;j++){
+			printf("%d ",C[i][j]);
+		}
+		printf("\n");
+	}
+	return 0;
+}
+Q6.WAP USING OPENMPI TO SORT THE NUMBERS.
+#include<omp.h>
+#include<stdio.h>
+int main(){
+	int A[20],B[20][20],C[20];
+	int n;
+	int i,j,k;
+
+	printf("Enter the value of N :");
+	scanf("%d",&n);
+	printf("Enter Array : \n");
+
+	for(i=0;i<n;i++)
+		scanf("%d",&A[i]);
+
+	double starttime=omp_get_wtime();
+
+	omp_set_num_threads(n*n);
+
+	#pragma omp parallel for
+	for(i=0;i<n;i++)
+	{
+		#pragma omp parallel for
+		for(j=0;j<n;j++)
+		{
+			if(A[i]>A[j])
+			{
+				B[i][j]=1;
+			}
+			else
+				B[i][j]=0;
+		}
+		int x=0;
+		#pragma omp parallel for reduction(+:x)
+ 		for(j=0;j<n;j++)
+ 		{
+			x+=B[i][j];
+		}
+		B[i][0]=x;
+		C[B[i][0]]=A[i];
+	}
+	double endtime=omp_get_wtime()-starttime;
+
+	printf("Sorted Array: ");
+	for(i=0;i<n;i++)
+		printf("%d ",C[i]);
+	printf("\nTook %f seconds\n",endtime);
+	return 0;
+}
+Q7.WAP USING OPENMPI TO MAKE A TREE AND TO SEARCH THE DATA IN TREE.
+ANS:
+#include<stdio.h>
+#include<omp.h>
+int tree[512];
+
+void  createTree(int i){
+	int ch;
+	printf("Enter node %d Data :",i);
+	scanf("%d",&tree[i]);
+	printf("Is there a Left node of NODE %d ? [0 if not]: ",i);
+	scanf("%d",&ch);
+	if(ch!=0)
+		createTree(2*i);
+	printf("Is there a Right node of NODE %d ? [0 if not]: ",i);
+	scanf("%d",&ch);
+	if(ch!=0)
+		createTree(2*i+1);
+}
+
+void searchTree(int data,int i){
+	int k;
+	if(tree[i]!=0&&found==0){
+	if(tree[i]==data){
+		printf("Node at %d \n",i);
+	}
+	else{
+		omp_set_num_threads(2);
+		#pragma omp parallel for
+		for(k=0;k<2;k++){
+			searchTree(data,2*i+k);
+		}
+	}
+	}
+}	
+	
+int main(){
+	int d;
+	printf("Creating tree \n");
+	createTree(1);
+	omp_set_num_threads(2);
+	printf("Enter data to be searched : ");
+	scanf("%d",&d);
+	searchTree(d,1);
+}
+Q9.WAP USING OPENMPI TO FIND THE THREADS ENVIRONMENT INFO.
+ANS:
+#include <omp.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main (int argc, char *argv[]) 
+{
+int nthreads, tid, procs, maxt, inpar, dynamic, nested;
+
+/* Start parallel region */
+#pragma omp parallel private(nthreads, tid)
+  {
+
+  /* Obtain thread number */
+  tid = omp_get_thread_num();
+
+  /* Only master thread does this */
+  if (tid == 0) 
+    {
+    printf("Thread %d getting environment info...\n", tid);
+
+    /* Get environment information */
+    procs = omp_get_num_procs();
+    nthreads = omp_get_num_threads();
+    maxt = omp_get_max_threads();
+    inpar = omp_in_parallel();
+    dynamic = omp_get_dynamic();
+    nested = omp_get_nested();
+
+    /* Print environment information */
+    printf("Number of processors = %d\n", procs);
+    printf("Number of threads = %d\n", nthreads);
+    printf("Max threads = %d\n", maxt);
+    printf("In parallel? = %d\n", inpar);
+    printf("Dynamic threads enabled? = %d\n", dynamic);
+    printf("Nested parallelism supported? = %d\n", nested);
+
+    }
+
+  }  /* Done */
+
+}
+Q10.WAP USING OPENMPI TO FIND WHICH THREAD IS PERFORMING WHICH ITERATION.
+#include <stdio.h>
+#include <omp.h>
+
+int main(int argc, char **argv)
+{
+  int i, thread_id, nloops;
+
+#pragma omp parallel private(thread_id, nloops)
+  {
+    nloops = 0;
+
+#pragma omp for
+    for (i=0; i<1000; ++i)
+      {
+        ++nloops;
+      }
+
+    thread_id = omp_get_thread_num();
+
+    printf("Thread %d performed %d iterations of the loop.\n",
+           thread_id, nloops );
+  }
+
+  return 0;
+}
